@@ -8,8 +8,10 @@ df = pd.read_csv(RAW_PATH)
 # Validate that the expected columns are present before registering it
 expected_columns = [
     'TypeofContact', 'Occupation', 'Gender', 'ProductPitched', 'CityTier', 
-    'NumberOfPersonVisiting', 'ProductPitched'
-            'MaritalStatus', 'Designation'
+    'NumberOfPersonVisiting', 'NumberOfFollowups', 'PreferredPropertyStar', 
+    'MaritalStatus', 'NumberOfTrips', 'Passport', 'PitchSatisfactionScore', 
+    'OwnCar', 'NumberOfChildrenVisiting', 'Designation', 'MonthlyIncome', 
+    'ProdTaken', 'DurationOfPitch', 'Age'
 ]
 missing = [c for c in expected_columns if c not in df.columns]
 if missing:

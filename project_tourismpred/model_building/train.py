@@ -21,11 +21,11 @@ ytrain = pd.read_csv("ytrain.csv").squeeze()
 ytest  = pd.read_csv("ytest.csv").squeeze()
 
 # One-hot encode 'Type' and scale numeric features
-numeric_features = ['Age', 'DurationOfPitch', 'MonthlyIncome', 'NumberOfTrips', 
-    'PitchSatisfactionScore', 'NumberOfFollowups', 
+numeric_features = ['Age', 'DurationOfPitch', 'MonthlyIncome', 'NumberOfTrips',
+    'PitchSatisfactionScore', 'NumberOfFollowups',
     'NumberOfChildrenVisiting', 'NumberOfPersonVisiting', 'PreferredPropertyStar']
 
-categorical_features = ['TypeofContact', 'Occupation', 'Gender', 'ProductPitched', 
+categorical_features = ['TypeofContact', 'Occupation', 'Gender', 'ProductPitched',
     'MaritalStatus', 'Designation', 'CityTier', 'Passport', 'OwnCar']
 
 # Set the class weight to handle class imbalance

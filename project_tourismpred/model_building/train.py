@@ -7,10 +7,11 @@ import xgboost as xgb
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
 import joblib
+# for creating a folder
+import os
 import mlflow
 
-# Use SQLite tracking backend (recommended in MLflow 3.x+ for local CI/CD runs)
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
+mlflow.set_tracking_uri("http://localhost:5000")
 mlflow.set_experiment("mlops-training-experiment")
 
 # Load processed splits from project_tourismpred/data/

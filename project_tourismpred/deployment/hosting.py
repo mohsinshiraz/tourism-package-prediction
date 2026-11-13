@@ -4,7 +4,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-MODEL_PATH = Path("project_tourismpred/model_building/best_tourism_package_model_v1.joblib")
+MODEL_PATH = Path("project_tourismpred/deployment/best_tourism_prediction_model_v1.joblib")
 APP_PATH = Path("project_tourismpred/deployment/app.py")
 REQ_PATH = Path("project_tourismpred/deployment/requirements.txt")
 STREAMLIT_APP_URL = os.getenv("STREAMLIT_APP_URL", "").strip()
@@ -28,7 +28,6 @@ def trigger_and_verify_endpoint():
         return
 
     print(f"Pinging live Streamlit deployment at {STREAMLIT_APP_URL} ...")
-    # Wait briefly for Streamlit Cloud webhook to pick up the push to main
     time.sleep(15)
     try:
         req = urllib.request.Request(

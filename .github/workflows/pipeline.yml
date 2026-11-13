@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths-ignore:
-      - 'project_tourismpred/model_building/*.joblib'
+      - 'project_tourismpred/deployment/*.joblib'
   workflow_dispatch:
 
 permissions:
@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install "pandas<3.0" scikit-learn xgboost joblib mlflow
+          pip install -r project_tourismpred/requirements.txt
 
       - name: Register Dataset
         run: python project_tourismpred/model_building/data_register.py
@@ -46,7 +46,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install "pandas<3.0" scikit-learn xgboost joblib mlflow
+          pip install -r project_tourismpred/requirements.txt
 
       - name: Prepare and Split Data
         run: python project_tourismpred/model_building/prep.py
@@ -82,7 +82,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install "pandas<3.0" scikit-learn xgboost joblib mlflow
+          pip install -r project_tourismpred/requirements.txt
 
       - name: Train and Evaluate Model
         run: python project_tourismpred/model_building/train.py
@@ -91,7 +91,8 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add project_tourismpred/model_building/best_tourism_package_model_v1.joblib
+          git add project_tourismpred/deployment/best_tourism_package_model_v1.joblib || true
+          git add project_tourismpred/deployment/best_tourism_prediction_model_v1.joblib
           git diff --staged --quiet || git commit -m "chore: update trained model artifact [skip ci]"
           git push origin main
 

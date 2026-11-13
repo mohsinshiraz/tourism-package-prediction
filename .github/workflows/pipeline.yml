@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install pandas scikit-learn xgboost joblib
+          pip install "pandas<3.0" scikit-learn xgboost joblib
 
       - name: Register Dataset
         run: python project_tourismpred/model_building/data_register.py
@@ -46,7 +46,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install pandas scikit-learn xgboost joblib
+          pip install "pandas<3.0" scikit-learn xgboost joblib
 
       - name: Prepare and Split Data
         run: python project_tourismpred/model_building/prep.py
@@ -82,7 +82,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install pandas scikit-learn xgboost joblib
+          pip install "pandas<3.0" scikit-learn xgboost joblib
 
       - name: Train and Evaluate Model
         run: python project_tourismpred/model_building/train.py

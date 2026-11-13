@@ -1,85 +1,115 @@
-name: Project Tourism Predictor CI/CD Pipeline
+name: Tourism Package MLOps Pipeline
 
 on:
   push:
     branches:
-      - main            # Automatically triggers on push to the main branch
-  workflow_dispatch:     # lets you click "Run workflow" in the Actions tab
+      - main
+    paths-ignore:
+      - 'tourism_project/model_building/*.joblib'
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  # ---------- JOB 1: Register Dataset ----------
   register-dataset:
-    name: Register Dataset
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install dependencies
-        run: pip install -r project_tourismpred/requirements.txt
-      - name: Register dataset
-        run: python project_tourismpred/model_building/data_register.py
-      - name: Upload registered dataset
-        uses: actions/upload-artifact@v4
-        with:
-          name: registered-data
-          path: project_tourismpred/data/tourism.csv
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  # ---------- JOB 2: Data Preparation ----------
-  data-preparation:
-    name: Data Preparation
-    needs: register-dataset          # waits for Job 1 to finish
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pandas scikit-learn xgboost joblib
+
+      - name: Register Dataset
+        run: python tourism_project/model_building/data_register.py
+
+  data-prep:
+    needs: register-dataset
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.10'
+
       - name: Install dependencies
-        run: pip install -r project_tourismpred/requirements.txt
-      - name: Prepare data
-        run: python project_tourismpred/model_building/prep.py
-      - name: Upload train/test splits
+        run: |
+          pip install --upgrade pip
+          pip install pandas scikit-learn xgboost joblib
+
+      - name: Prepare and Split Data
+        run: python tourism_project/model_building/prep.py
+
+      - name: Upload processed datasets
         uses: actions/upload-artifact@v4
         with:
-          name: data-splits
+          name: processed-data
           path: |
-            Xtrain.csv
-            Xtest.csv
-            ytrain.csv
-            ytest.csv
+            tourism_project/data/Xtrain.csv
+            tourism_project/data/Xtest.csv
+            tourism_project/data/ytrain.csv
+            tourism_project/data/ytest.csv
 
-  # ---------- JOB 3: Model Training + MLflow Tracking ----------
   model-training:
-    name: Model Training
-    needs: data-preparation          # waits for Job 2 to finish
+    needs: data-prep
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install dependencies
-        run: pip install -r project_tourismpred/requirements.txt
-      - name: Download train/test splits
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download processed datasets
         uses: actions/download-artifact@v4
         with:
-          name: data-splits          # brings Xtrain/Xtest/ytrain/ytest from Job 2
-      - name: Start MLflow tracking server
+          name: processed-data
+          path: tourism_project/data/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
         run: |
-          nohup mlflow ui --host 0.0.0.0 --port 5000 &   # Run MLflow UI in the background
-          sleep 5                                        # give the server a moment to start
-      - name: Train model with MLflow tracking
-        run: python project_tourismpred/model_building/train.py
-      - name: Commit trained model
+          pip install --upgrade pip
+          pip install pandas scikit-learn xgboost joblib
+
+      - name: Train and Evaluate Model
+        run: python tourism_project/model_building/train.py
+
+      - name: Push Trained Model to Main Branch
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add project_tourismpred/deployment/best_tourism_prediction_model_v1.joblib
-          git commit -m "Add trained model [skip ci]" || echo "No changes to commit"
-          git pull --rebase origin main
-          git push
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add tourism_project/model_building/best_tourism_package_model_v1.joblib
+          git diff --staged --quiet || git commit -m "chore: update trained model artifact [skip ci]"
+          git push origin main
+
+  deploy:
+    needs: model-training
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout latest main branch with updated model
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Deploy & Verify Streamlit Application
+        env:
+          STREAMLIT_APP_URL: ${{ secrets.STREAMLIT_APP_URL }}
+        run: python tourism_project/deployment/hosting.py

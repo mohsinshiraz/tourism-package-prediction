@@ -11,7 +11,8 @@ from sklearn.metrics import classification_report
 import joblib
 import mlflow
 
-mlflow.set_tracking_uri("http://localhost:5000")
+# Use local file-based tracking in CI/CD (no localhost server running in GitHub Actions)
+mlflow.set_tracking_uri("file:./mlruns")
 mlflow.set_experiment("mlops-training-experiment")
 
 # Xtrain/Xtest/ytrain/ytest are downloaded from the previous job's artifact

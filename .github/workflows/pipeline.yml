@@ -11,6 +11,14 @@ on:
 permissions:
   contents: write
 
+# ❌ ERROR (Push Trained Model step): the Colab push cell commits every file separately, so
+#    one push from Colab started ~9 pipeline runs at once. Each run then tried to push its
+#    model to main, and all but the first were rejected ("! [rejected] main -> main (fetch first)").
+# ✅ FIX: allow only one run at a time; a newer push cancels the older run that is still going.
+concurrency:
+  group: tourism-mlops-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   register-dataset:
     runs-on: ubuntu-latest
@@ -84,17 +92,37 @@ jobs:
           pip install --upgrade pip
           pip install -r project_tourismpred/requirements.txt
 
+      # ❌ ERROR (Model Training job): train.py pointed MLflow at http://localhost:5000,
+      #    which does not exist on the runner -> "Connection refused".
+      # ✅ FIX: give train.py a server-less file store through the environment variable.
       - name: Train and Evaluate Model
+        env:
+          MLFLOW_TRACKING_URI: file:./mlruns
         run: python project_tourismpred/model_building/train.py
+
+      # Keep the MLflow tracking data from the run (download it from the run page in the Actions tab)
+      - name: Upload MLflow tracking logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlflow-runs
+          path: mlruns/
 
       - name: Push Trained Model to Main Branch
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add project_tourismpred/deployment/best_tourism_package_model_v1.joblib || true
+          # ❌ ERROR: a stray "git add" of a file that train.py never creates
+          #    (best_tourism_package_model_v1.joblib) and a plain "git push" that is rejected
+          #    whenever main has moved on since this run checked it out.
+          # ✅ FIX: add only the real model file and rebase onto the latest main before pushing.
           git add project_tourismpred/deployment/best_tourism_prediction_model_v1.joblib
-          git diff --staged --quiet || git commit -m "chore: update trained model artifact [skip ci]"
-          git push origin main
+          if git diff --staged --quiet; then
+            echo "Model unchanged - nothing to commit."
+          else
+            git commit -m "chore: update trained model artifact [skip ci]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
 
   deploy:
     needs: model-training
@@ -109,6 +137,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      # ❌ ERROR (Deploy job): hosting.py ran without installing anything, so it could not
+      #    load/test the model, and its Streamlit URL ping exited with code 1 on any redirect,
+      #    timeout or sleeping app - failing the job even though the app itself was fine.
+      # ✅ FIX: install the app's own requirements so hosting.py can load the committed model
+      #    and run a test prediction (same versions Streamlit Cloud uses).
+      - name: Install deployment dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r project_tourismpred/deployment/requirements.txt
 
       - name: Deploy & Verify Streamlit Application
         env:

@@ -7,12 +7,20 @@ import xgboost as xgb
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
 import joblib
-# for creating a folder
-import os
 import mlflow
 
-mlflow.set_tracking_uri("http://localhost:5000")
+# =====================================================================================
+# ❌ ERROR (Model Training job): the tracking URI was hard-coded to "http://localhost:5000".
+#    That server only exists inside Colab (started by the ngrok/MLflow UI cell). On the
+#    GitHub Actions runner nothing listens on port 5000, so set_experiment() failed with:
+#    MlflowException: ... localhost:5000 ... [Errno 111] Connection refused
+# ✅ FIX: read the URI from the MLFLOW_TRACKING_URI env var (set in pipeline.yml) and fall
+#    back to a local file store (./mlruns) that needs no server.
+# =====================================================================================
+TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns")
+mlflow.set_tracking_uri(TRACKING_URI)
 mlflow.set_experiment("mlops-training-experiment")
+print(f"MLflow tracking URI: {TRACKING_URI}")
 
 # Load processed splits from project_tourismpred/data/
 Xtrain = pd.read_csv("project_tourismpred/data/Xtrain.csv")

@@ -109,20 +109,35 @@ jobs:
 
       - name: Push Trained Model to Main Branch
         run: |
+          # ❌ ERROR (run 2, exit code 1): "git pull --rebase" conflicted on the binary .joblib
+          #    file whenever an earlier run had already committed a different model to main.
+          #    Git cannot merge binary files, so the step failed and deploy was skipped.
+          # ✅ FIX: never merge. Save the new model, reset to the latest main, copy the model
+          #    back on top, commit and push. Retries 3 times in case main moves meanwhile.
+          set -e
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          # ❌ ERROR: a stray "git add" of a file that train.py never creates
-          #    (best_tourism_package_model_v1.joblib) and a plain "git push" that is rejected
-          #    whenever main has moved on since this run checked it out.
-          # ✅ FIX: add only the real model file and rebase onto the latest main before pushing.
-          git add project_tourismpred/deployment/best_tourism_prediction_model_v1.joblib
-          if git diff --staged --quiet; then
-            echo "Model unchanged - nothing to commit."
-          else
+          MODEL=project_tourismpred/deployment/best_tourism_prediction_model_v1.joblib
+          cp "$MODEL" /tmp/new_model.joblib
+          for attempt in 1 2 3; do
+            echo "Push attempt $attempt"
+            git fetch origin main
+            git reset --hard FETCH_HEAD
+            cp /tmp/new_model.joblib "$MODEL"
+            git add "$MODEL"
+            if git diff --staged --quiet; then
+              echo "Model unchanged - nothing to commit."
+              exit 0
+            fi
             git commit -m "chore: update trained model artifact [skip ci]"
-            git pull --rebase origin main
-            git push origin HEAD:main
-          fi
+            if git push origin HEAD:main; then
+              echo "Model pushed to main."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Could not push the model after 3 attempts."
+          exit 1
 
   deploy:
     needs: model-training
